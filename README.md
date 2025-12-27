@@ -45,7 +45,65 @@ An Anchor-based Solana program (deployed on devnet) that:
 
 ### Visual Architecture
 
-For a comprehensive visual representation of the system architecture, including all layers and their interactions, see the [High-Level Architecture Diagram](https://deepwiki.com/akash-R-A-J/solana-escrow-program) in the DeepWiki documentation. The diagram illustrates:
+The following diagram illustrates the complete system architecture, showing all layers from the user interface down to the Solana blockchain:
+
+```mermaid
+graph TB
+    subgraph "User Interface Layer"
+        Browser["Web Browser"]
+    end
+    
+    subgraph "Frontend Application"
+        App["App.tsx<br/>Main Component"]
+        Header["Header Component"]
+        CreateOffer["CreateOffer Component"]
+        OffersList["OffersList Component"]
+        MyOffers["MyOffers Component"]
+        Hook["useEscrow Hook"]
+    end
+    
+    subgraph "Integration Layer"
+        Anchor["@coral-xyz/anchor<br/>Program Interface"]
+        Web3["@solana/web3.js<br/>Connection & Transactions"]
+        SPL["@solana/spl-token<br/>Token Operations"]
+        Wallet["@solana/wallet-adapter-*<br/>react<br/>WalletProvider"]
+    end
+    
+    subgraph "Solana Devnet"
+        RPC["RPC Endpoint"]
+        Program["Escrow Program<br/>6kTpPk3Bm4SfY2KuLF5sH4cpsTwBUtyJ5j3prMB92i7Q"]
+        OfferPDAs["Offer PDAs<br/>Derived from 'offer' + id"]
+        VaultPDAs["Vault PDAs<br/>Associated Token Accounts"]
+        SystemProg["System Program"]
+        TokenProg["SPL Token Program"]
+    end
+    
+    Browser --> App
+    App --> Header
+    App --> CreateOffer
+    App --> OffersList
+    App --> MyOffers
+    
+    CreateOffer --> Hook
+    OffersList --> Hook
+    MyOffers --> Hook
+    
+    Hook --> Anchor
+    Hook --> Web3
+    Hook --> SPL
+    App --> Wallet
+    
+    Anchor --> RPC
+    Web3 --> RPC
+    SPL --> RPC
+    Wallet -.-> Browser
+    
+    RPC --> Program
+    Program --> OfferPDAs
+    Program --> VaultPDAs
+    Program --> SystemProg
+    Program --> TokenProg
+```Architecture Diagram](https://deepwiki.com/akash-R-A-J/solana-escrow-program) in the DeepWiki documentation. The diagram illustrates:
 
 - Complete data flow from user interface to blockchain
 - Integration between React components and Solana program
@@ -203,9 +261,99 @@ The project uses standard scripts defined in `frontend/package.json`:
 
 ## Transaction Flows
 
-The DeepWiki documentation includes detailed sequence diagrams and flowcharts for all three transaction types:
+The following sequence diagrams illustrate the complete data flow for each transaction type, from user interaction through component validation, hook orchestration, and on-chain execution.
 
-- **[Make Offer Flow](https://deepwiki.com/akash-R-A-J/solana-escrow-program/2.2-transaction-flows#make-offer-flow)** - Complete flow from user input through component validation, hook orchestration, and on-chain account creation
+### Make Offer Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant CreateOffer as CreateOffer Component
+    participant Hook as useEscrow Hook
+    participant Service as EscrowService
+    participant RPC as Solana RPC
+    participant Chain as On-Chain Program
+    
+    User->>CreateOffer: Select tokens & amounts
+    CreateOffer->>CreateOffer: Validate inputs
+    CreateOffer->>Hook: makeOffer()
+    Hook->>Hook: generateOfferId()
+    Hook->>Hook: validateOfferParams()
+    Hook->>Service: makeOffer(params)
+    Service->>RPC: Build & send transaction
+    RPC->>Chain: Create Offer PDA
+    RPC->>Chain: Create Vault PDA
+    RPC->>Chain: Transfer Token A → Vault
+    Chain-->>RPC: Transaction signature
+    RPC-->>Service: txSignature
+    Service-->>Hook: {txSignature, offerId}
+    Hook-->>CreateOffer: Success
+    CreateOffer->>CreateOffer: Reset form
+    CreateOffer->>User: Show success message
+```
+
+### Take Offer Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant OffersList as OffersList Component
+    participant Modal as TakeOfferModal
+    participant Hook as useEscrow Hook
+    participant Service as EscrowService
+    participant RPC as Solana RPC
+    participant Chain as On-Chain Program
+    
+    User->>OffersList: Browse offers
+    OffersList->>Hook: getAllOffers()
+    Hook-->>OffersList: Display offers
+    User->>OffersList: Click 'Take Offer'
+    OffersList->>Modal: Open modal
+    Modal->>Hook: getTokenBalance(tokenB)
+    Hook-->>Modal: Display balance
+    User->>Modal: Confirm
+    Modal->>Hook: takeOffer(offer)
+    Hook->>Service: takeOffer(params)
+    Service->>RPC: Build & send transaction
+    RPC->>Chain: Transfer Token B → Maker
+    RPC->>Chain: Transfer Token A → Taker
+    RPC->>Chain: Close Vault & Offer
+    Chain-->>RPC: Transaction signature
+    RPC-->>Service: txSignature
+    Service-->>Hook: txSignature
+    Hook-->>Modal: Success
+    Modal->>User: Show success & refresh
+```
+
+### Revoke Offer Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant MyOffers as MyOffers Component
+    participant Hook as useEscrow Hook
+    participant Service as EscrowService
+    participant RPC as Solana RPC
+    participant Chain as On-Chain Program
+    
+    User->>MyOffers: View 'My Offers'
+    MyOffers->>Hook: getOffersByMaker()
+    Hook-->>MyOffers: Display user's offers
+    User->>MyOffers: Click 'Revoke'
+    MyOffers->>MyOffers: Confirm dialog
+    User->>MyOffers: Confirm revocation
+    MyOffers->>Hook: revokeOffer(offer)
+    Hook->>Hook: Verify ownership
+    Hook->>Service: revokeOffer(params)
+    Service->>RPC: Build & send transaction
+    RPC->>Chain: Transfer Token A → Maker
+    RPC->>Chain: Close Vault & Offer
+    Chain-->>RPC: Transaction signature
+    RPC-->>Service: txSignature
+    Service-->>Hook: txSignature
+    Hook-->>MyOffers: Success
+    MyOffers->>User: Show success & refresh
+```user input through component validation, hook orchestration, and on-chain account creation
 - **[Take Offer Flow](https://deepwiki.com/akash-R-A-J/solana-escrow-program/2.2-transaction-flows#take-offer-flow)** - Offer discovery, balance verification, and atomic token swap execution
 - **[Revoke Offer Flow](https://deepwiki.com/akash-R-A-J/solana-escrow-program/2.2-transaction-flows#revoke-offer-flow)** - Authorization checks and token refund process
 
