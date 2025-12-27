@@ -2,6 +2,8 @@
 
 A trustless, peer‑to‑peer token escrow built on Solana devnet, with a React/TypeScript frontend and an Anchor-based smart contract. Users can create offers to swap one SPL token for another, take existing offers, or revoke their own offers without any centralized intermediary.
 
+> **📚 Comprehensive Documentation:** For detailed architecture diagrams, transaction flows, and component breakdowns, see the [DeepWiki Documentation](https://deepwiki.com/akash-R-A-J/solana-escrow-program)
+
 ---
 
 ## Features
@@ -40,6 +42,15 @@ An Anchor-based Solana program (deployed on devnet) that:
 **Program address (devnet):** `6kTpPk3Bm4SfY2KuLF5sH4cpsTwBUtyJ5j3prMB92i7Q`
 
 ---
+
+### Visual Architecture
+
+For a comprehensive visual representation of the system architecture, including all layers and their interactions, see the [High-Level Architecture Diagram](https://deepwiki.com/akash-R-A-J/solana-escrow-program) in the DeepWiki documentation. The diagram illustrates:
+
+- Complete data flow from user interface to blockchain
+- Integration between React components and Solana program
+- PDA derivation patterns and account relationships
+- RPC communication and transaction lifecycle
 
 ## Smart Contract Design
 
@@ -189,6 +200,18 @@ To deploy your own instance:
 ## Development Guide
 
 The project uses standard scripts defined in `frontend/package.json`:
+
+## Transaction Flows
+
+The DeepWiki documentation includes detailed sequence diagrams and flowcharts for all three transaction types:
+
+- **[Make Offer Flow](https://deepwiki.com/akash-R-A-J/solana-escrow-program/2.2-transaction-flows#make-offer-flow)** - Complete flow from user input through component validation, hook orchestration, and on-chain account creation
+- **[Take Offer Flow](https://deepwiki.com/akash-R-A-J/solana-escrow-program/2.2-transaction-flows#take-offer-flow)** - Offer discovery, balance verification, and atomic token swap execution
+- **[Revoke Offer Flow](https://deepwiki.com/akash-R-A-J/solana-escrow-program/2.2-transaction-flows#revoke-offer-flow)** - Authorization checks and token refund process
+
+Each flow diagram shows the complete data path from React components through the `useEscrow` hook, `EscrowService` abstraction, Solana RPC, and finally to on-chain execution.
+
+---
 
 ```json
 {
